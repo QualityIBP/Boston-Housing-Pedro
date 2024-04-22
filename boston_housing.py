@@ -1,0 +1,155 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import scipy.stats
+import requests
+import io
+
+# Fetching data from URL using requests
+file_path = 'C:/Users/c02747/Desktop/boston_housing.csv'
+
+# Load the CSV file into a DataFrame
+boston_df = pd.read_csv(file_path)
+
+boston_df
+
+boston_df.info()
+boston_df.describe()
+boston_df.columns
+
+# Boxplot for "Median value of owner-occupied homes"
+plt.figure(figsize=(8, 6))
+boston_df.boxplot(column='MEDV')
+plt.title('Boxplot of Median value of owner-occupied homes')
+plt.ylabel('Median value ($1000\'s)')
+plt.show()
+
+# Bar plot for the Charles river variable
+plt.figure(figsize=(8, 6))
+boston_df['CHAS'].value_counts().plot(kind='bar')
+plt.title('Bar plot of Charles river variable')
+plt.xlabel('Bound river (1=yes, 0=no)')
+plt.ylabel('Count')
+plt.show()
+
+# Discretizing AGE variable into three groups
+boston_df['AGE_group'] = pd.cut(boston_df['AGE'], bins=[0, 35, 70, boston_df['AGE'].max()], labels=['35 years and younger', 'Between 35 and 70 years', '70 years and older'])
+
+# Boxplot for MEDV variable vs AGE variable (Discretized)
+# Discretizing AGE variable into three groups
+boston_df['AGE_group'] = pd.cut(boston_df['AGE'], bins=[0, 35, 70, boston_df['AGE'].max()], labels=['35 years and younger', 'Between 35 and 70 years', '70 years and older'])
+# Grouping data by AGE_group and extracting MEDV values
+groups = boston_df.groupby('AGE_group')['MEDV'].apply(list)
+# Plotting boxplots
+plt.figure(figsize=(10, 8))
+plt.boxplot(groups.values, labels=groups.index)
+plt.title('Boxplot of MEDV variable vs AGE variable')
+plt.xlabel('Age group')
+plt.ylabel('Median value ($1000\'s)')
+plt.show()
+
+# Scatter plot for Nitric oxide concentrations vs proportion of non-retail business acres per town
+plt.figure(figsize=(10, 8))
+plt.scatter(boston_df['NOX'], boston_df['INDUS'], alpha=0.5)
+plt.title('Scatter plot of Nitric oxide concentrations vs non-retail business acres')
+plt.xlabel('Nitric oxide concentrations (parts per 10 million)')
+plt.ylabel('Proportion of non-retail business acres')
+plt.show()
+
+# Histogram for the pupil to teacher ratio variable
+plt.figure(figsize=(10, 8))
+boston_df['PTRATIO'].hist(bins=10)
+plt.title('Histogram of pupil to teacher ratio')
+plt.xlabel('Pupil to teacher ratio')
+plt.ylabel('Frequency')
+plt.show()
+
+
+################
+# Is there a significant difference in median value of houses bounded by the Charles river or not? (T-test for independent samples)
+################
+from scipy.stats import ttest_ind
+
+# Subset data for houses bounded and not bounded by the Charles river
+river_bounded = boston_df[boston_df['CHAS'] == 1]['MEDV']
+not_river_bounded = boston_df[boston_df['CHAS'] == 0]['MEDV']
+
+# Perform t-test
+t_statistic, p_value = ttest_ind(river_bounded, not_river_bounded)
+
+# Print test results
+print("T-test results:")
+print("T-statistic:", t_statistic)
+print("P-value:", p_value)
+
+# Check if p-value is less than 0.05
+if p_value < 0.05:
+    print("Conclusion: Reject the null hypothesis. There is a significant difference in median value of houses bounded by the Charles river and those not bounded by it.")
+else:
+    print("Conclusion: Fail to reject the null hypothesis. There is no significant difference in median value of houses bounded by the Charles river and those not bounded by it.")
+
+
+
+################
+# Is there a difference in Median values of houses (MEDV) for each proportion of owner occupied units built prior to 1940 (AGE)? (ANOVA)
+################
+from scipy.stats import f_oneway
+
+# Perform ANOVA test
+f_statistic, p_value = f_oneway(boston_df[boston_df['AGE_group'] == '35 years and younger']['MEDV'],
+                                boston_df[boston_df['AGE_group'] == 'Between 35 and 70 years']['MEDV'],
+                                boston_df[boston_df['AGE_group'] == '70 years and older']['MEDV'])
+
+# Print test results
+print("ANOVA results:")
+print("F-statistic:", f_statistic)
+print("P-value:", p_value)
+
+# Check if p-value is less than 0.05
+if p_value < 0.05:
+    print("Conclusion: Reject the null hypothesis. There is a difference in median values of houses for each proportion of owner occupied units built prior to 1940 (AGE).")
+else:
+    print("Conclusion: Fail to reject the null hypothesis. There is no difference in median values of houses for each proportion of owner occupied units built prior to 1940 (AGE).")
+
+
+################
+# Can we conclude that there is no relationship between Nitric oxide concentrations and proportion of non-retail business acres per town? (Pearson Correlation)
+################
+
+from scipy.stats import pearsonr
+
+# Calculate Pearson correlation coefficient
+correlation_coefficient, p_value = pearsonr(boston_df['NOX'], boston_df['INDUS'])
+
+# Print test results
+print("Pearson Correlation results:")
+print("Correlation Coefficient:", correlation_coefficient)
+print("P-value:", p_value)
+
+# Check if p-value is less than 0.05
+if p_value < 0.05:
+    print("Conclusion: Reject the null hypothesis. There is a relationship between Nitric oxide concentrations and proportion of non-retail business acres per town.")
+else:
+    print("Conclusion: Fail to reject the null hypothesis. There is no relationship between Nitric oxide concentrations and proportion of non-retail business acres per town.")
+
+
+################
+# What is the impact of an additional weighted distance  to the five Boston employment centres on the median value of owner occupied homes? (Regression analysis)
+################
+
+from scipy.stats import linregress
+
+# Calculate regression statistics
+slope, intercept, r_value, p_value, std_err = linregress(boston_df['DIS'], boston_df['MEDV'])
+
+# Print regression results
+print("Regression Analysis results:")
+print("Slope:", slope)
+print("Intercept:", intercept)
+print("R-value (Correlation Coefficient):", r_value)
+print("P-value:", p_value)
+
+# Check if p-value is less than 0.05
+if p_value < 0.05:
+    print("Conclusion: Reject the null hypothesis. There is an impact of an additional weighted distance to the five Boston employment centres on the median value of owner occupied homes.")
+else:
+    print("Conclusion: Fail to reject the null hypothesis. There is no impact of an additional weighted distance to the five Boston employment centres on the median value of owner occupied homes.")
